@@ -33,11 +33,13 @@ class GetData(object):
     def main(self, start_time, end_time, position):
         
         players = self.players(start_time, end_time)
+        players_count = players.count()
+        print 'starting to collect data for ' + str(players_count) + ' players'
         
-        print 'starting to collect data for ' + str(players.count()) + ' players'
-        
-        for player in players:
+        for pro, player in enumerate(players):
             self.collect_game_data(player_shortcut=player['shortcut'], position=position)
+            if pro%10 == 0:
+                print '===== PROGRESS IS ' + str(float(pro)/players_count*100) + '% ====='
         
     def get_player_data(self):
 
@@ -94,26 +96,37 @@ class GetData(object):
 
     def get_game_data(self, url):
         
-        soup = BeautifulSoup(urllib2.urlopen(url).read())
-        
+        soup = BeautifulSoup(urllib2.urlopen(url).read())     
         table = soup.find('tbody')
         if not table:
-            return pd.DataFrame({})
-        
-        print url
-        
+            return pd.DataFrame({})  
+        #print url
         res = []
         row = []
         header = self.get_game_header(url)
-        
-        for tr in table.find_all('tr'):
-            for td in tr.find_all(re.compile('^t')):
-                row.append(td.text)
-            if row[0] == 'Rk':
+        pro = 0
+        offset = False
+             
+        while pro == 0 or offset:           
+            if offset:
+                url = url+'&offset='+str(pro)
+                soup = BeautifulSoup(urllib2.urlopen(url).read())     
+                table = soup.find('tbody')
+                offset = False   
+            for tr in table.find_all('tr'):
+                for td in tr.find_all(re.compile('^t')):
+                    row.append(td.text)
+                if row[0] == 'Rk':
+                    row = []
+                    continue        
+                res.append(row)
                 row = []
-                continue        
-            res.append(row)
-            row = []
+                pro += 1
+                #print pro
+                if pro%300 == 0:
+                    offset = True
+                    print str(pro) + ' records already inserted...continuing...'
+                    break
         df = pd.DataFrame(res, columns = header)
         df.drop([''], axis = 1, inplace = True)
         return df
@@ -139,7 +152,7 @@ class GetData(object):
                 except IndexError:
                     header.append('')
                     continue
-        print header
+        #print header
         return header
         
         
@@ -160,7 +173,7 @@ class GetData(object):
                 coll.update_one(query, {'$set': rec}, upsert = True)
         cur = coll.find({})
         count = cur.count()
-        print str(data.shape[0]) + ' records inserted in collection: ' + coll.name +' now there are ' + str(count) + ' records'
+        print str(data.shape[0]) + ' records inserted in collection: ' + coll.name +' - now there are ' + str(count) + ' records'
         
     def collect_game_data(self, player_shortcut, position):
         
