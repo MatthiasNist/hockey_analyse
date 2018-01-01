@@ -30,9 +30,9 @@ class GetData(object):
         #self.coll_games.delete_many({})
         self.url_raw = 'https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max=99&is_playoffs=N&group_set=single&player_game_min=1&player_game_max=9999'
         
-    def main(self, start_time, end_time, position):
+    def main(self, start_time, end_time, position, letter = None):
         
-        players = self.players(start_time, end_time)
+        players = self.players(start_time, end_time, letter)
         players_count = players.count()
         print 'starting to collect data for ' + str(players_count) + ' players'
         
@@ -81,26 +81,33 @@ class GetData(object):
 #                     'begin_active': element['begin_active'],
 #                     'end_active': element['end_active']
 #                     }
-#                     )
+#                     ) '$regex': '^'+letter
 # =============================================================================
             
         print 'inserted'
     
-    def players(self, start_time, end_time):
+    def players(self, start_time, end_time, letter):
             
-        cur = self.coll_players.find({'begin_active': {'$gte': start_time},
-                                     'end_active': {'$lte': end_time}
-                                     })
+        query = {
+                'begin_active': {'$gte': start_time},
+                'end_active': {'$lte': end_time}
+                }
         
+        if letter:
+            query.update({'shortcut': {'$regex': '^'+letter}})
+            
+        cur = self.coll_players.find(query)#'khabini01'
+                                             
         return cur
 
-    def get_game_data(self, url):
+    def get_game_data(self, url_raw):
         
+        url = url_raw
         soup = BeautifulSoup(urllib2.urlopen(url).read())     
         table = soup.find('tbody')
         if not table:
             return pd.DataFrame({})  
-        #print url
+        print url
         res = []
         row = []
         header = self.get_game_header(url)
@@ -109,7 +116,7 @@ class GetData(object):
              
         while pro == 0 or offset:           
             if offset:
-                url = url+'&offset='+str(pro)
+                url = url_raw+'&offset='+str(pro)
                 soup = BeautifulSoup(urllib2.urlopen(url).read())     
                 table = soup.find('tbody')
                 offset = False   
@@ -120,12 +127,12 @@ class GetData(object):
                     row = []
                     continue        
                 res.append(row)
-                row = []
-                pro += 1
+                pro = int(row[0])
+                row = []                
                 #print pro
                 if pro%300 == 0:
                     offset = True
-                    print str(pro) + ' records already inserted...continuing...'
+                    print str(pro) + ' records already found...continuing...'
                     break
         df = pd.DataFrame(res, columns = header)
         df.drop([''], axis = 1, inplace = True)
@@ -173,7 +180,7 @@ class GetData(object):
                 coll.update_one(query, {'$set': rec}, upsert = True)
         cur = coll.find({})
         count = cur.count()
-        print str(data.shape[0]) + ' records inserted in collection: ' + coll.name +' - now there are ' + str(count) + ' records'
+        print str(data.shape[0]) + ' records inserted in collection: [' + coll.name +'] - now there are ' + str(count) + ' records'
         
     def collect_game_data(self, player_shortcut, position):
         
@@ -190,9 +197,10 @@ class GetData(object):
 # =============================================================================
         
         url = self.url_raw + '&pos=' + position + '&player=' + player_shortcut
+        print 'searching for data for player ' + str(player_shortcut)
         df_games = self.get_game_data(url)
         if df_games.empty:
-            print 'no data for player ' + player_shortcut + ' on position ' + position
+            print 'no data found for player ' + player_shortcut + ' on position ' + position
             return
         df_games['shortcut'] = player_shortcut
         _src = dt.datetime.strftime(dt.datetime.now(), '%Y-%m-%d')
