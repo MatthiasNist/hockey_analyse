@@ -210,24 +210,32 @@ class GetData(object):
         _src = dt.datetime.strftime(dt.datetime.now(), '%Y-%m-%d')
         self.write_to_mongo(data = df_games, coll = self.coll_games, source = _src)
         
+    def write_to_csv(self):
+        
+        cur = self.coll_games.find({})
+        df = pd.DataFrame(list(cur))
+        df.to_csv('C:\Users\Matthias\Documents\GitHub\hockey_analyse\data_games.csv')
+        
         
         
         
 
 if __name__ == '__main__':
-    import string
-    if len(letters) == 0:
-        letters = list(string.ascii_lowercase)
+#    import string
+#    if len(letters) == 0:
+#        letters = list(string.ascii_lowercase)
     data_instance = GetData()
-    data_instance.get_player_data()
-    #url = "https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max=99&player=greisth01&is_playoffs=N&group_set=single&series_game_min=1&series_game_max=7&team_game_min=1&team_game_max=84&player_game_min=1&player_game_max=9999&game_type%5B%5D=R&game_type%5B%5D=OT&game_type%5B%5D=SO&pos=G&game_month=0&order_by=goals_against_avg"
-    #test.get_game_data(url=url)
-    for letter in letters:
-        print "=================================" + letter
-        while True:
-            try:
-                data_instance.main(start_time = 1980, end_time = 2018, position = "G", letter = letter)
-            except:
-                continue
-            break
+#    data_instance.get_player_data()
+#    #url = "https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max=99&player=greisth01&is_playoffs=N&group_set=single&series_game_min=1&series_game_max=7&team_game_min=1&team_game_max=84&player_game_min=1&player_game_max=9999&game_type%5B%5D=R&game_type%5B%5D=OT&game_type%5B%5D=SO&pos=G&game_month=0&order_by=goals_against_avg"
+#    #test.get_game_data(url=url)
+#    for letter in letters:
+#        print "=================================" + letter
+#        while True:
+#            try:
+#                data_instance.main(start_time = 1980, end_time = 2018, position = "G", letter = letter)
+#            except:
+#                continue
+#            break
+    data_instance.write_to_csv()
+    
         
