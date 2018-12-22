@@ -5,6 +5,8 @@ Created on Mon Dec 25 15:56:26 2017
 @author: Matthias
 """
 
+#test
+
 import sys
 sys.path.append('C:\Users\Matthias\Documents\Python Scripts\hockey_analysis')
 import pandas as pd
