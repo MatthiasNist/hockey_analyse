@@ -8,7 +8,7 @@ Created on Mon Dec 25 15:56:26 2017
 #test
 
 import sys
-sys.path.append('C:\Users\Matthias\Documents\Python Scripts\hockey_analysis')
+sys.path.append('/home/matthias/Documents/Python Scripts/hockey_analysis')
 import pandas as pd
 import numpy as np
 import requests
@@ -19,8 +19,8 @@ from bs4 import BeautifulSoup
 import datetime as dt
 
 import re
-
-import urllib2
+from urllib.request import urlopen
+#import urllib2
 
 
 class GetData(object):
@@ -36,16 +36,16 @@ class GetData(object):
         
         players = self.players(start_time, end_time, letter)
         players_count = players.count()
-        print 'starting to collect data for ' + str(players_count) + ' players'
+        print('starting to collect data for ' + str(players_count) + ' players')
         
         for pro, player in enumerate(players):
             exists = self.coll_games.find_one({'shortcut': player['shortcut']})
             if exists:
-                print 'Player ' + player['shortcut'] + ' already exists'
+                print('Player ' + player['shortcut'] + ' already exists')
                 continue
             self.collect_game_data(player_shortcut=player['shortcut'], position=position)
             if pro%10 == 0:
-                print '===== PROGRESS IS ' + str(float(pro)/players_count*100) + '% ====='
+                print('===== PROGRESS IS ' + str(float(pro)/players_count*100) + '% =====')
         
     def get_player_data(self):
 
@@ -58,17 +58,17 @@ class GetData(object):
         
         response = requests.request("GET", url, headers=headers)
         
-        df_players = pd.read_csv(io.StringIO(response.text), names = ['shortcut', 'name', 'active_period', 'active_flag'])
+        df_players = pd.read_csv(io.StringIO(response.text), names = ['shortcut', 'name', 'active_period', 'active_flag', "Unnamed: 4", "Unnamed: 5", "Unnamed: 6"], dtype = {"shortcut": str, "name": str, "active_period": str, "active_flag": str})
         
         df_players['active_period'] = df_players['active_period'].apply(
-                lambda x: str(x) + '-' + str(x) if len(x.split('-')) == 1 
+                lambda x: str(x) + '-' + str(x) if len(x.split('-')) == 1
                 else str(x))
         df_players['first_name'] = df_players['name'].apply(lambda x: 
             x.split(' ')[0])
         df_players['last_name'] = df_players['name'].apply(lambda x: 
             x.split(' ')[1])
         df_players['begin_active'] = df_players['active_period'].apply(
-                lambda x: int(x.split('-')[0]))    
+                lambda x: int(x.split('-')[0]))
         df_players['end_active'] = df_players['active_period'].apply(
                 lambda x: int(x.split('-')[1]))
         df_to_write = df_players[['shortcut', 'first_name', 'last_name',
@@ -90,7 +90,7 @@ class GetData(object):
 #                     ) '$regex': '^'+letter
 # =============================================================================
             
-        print 'inserted'
+        print('inserted')
     
     def players(self, start_time, end_time, letter):
             
@@ -109,11 +109,11 @@ class GetData(object):
     def get_game_data(self, url_raw):
         
         url = url_raw
-        soup = BeautifulSoup(urllib2.urlopen(url).read())     
+        soup = BeautifulSoup(urlopen(url).read())
         table = soup.find('tbody')
         if not table:
             return pd.DataFrame({})  
-        print url
+        print(url)
         res = []
         row = []
         header = self.get_game_header(url)
@@ -123,7 +123,7 @@ class GetData(object):
         while pro == 0 or offset:           
             if offset:
                 url = url_raw+'&offset='+str(pro)
-                soup = BeautifulSoup(urllib2.urlopen(url).read())     
+                soup = BeautifulSoup(urlopen(url).read())
                 table = soup.find('tbody')
                 offset = False   
             for tr in table.find_all('tr'):
@@ -138,7 +138,7 @@ class GetData(object):
                 #print pro
                 if pro%300 == 0:
                     offset = True
-                    print str(pro) + ' records already found...continuing...'
+                    print(str(pro) + ' records already found...continuing...')
                     break
         df = pd.DataFrame(res, columns = header)
         df.drop([''], axis = 1, inplace = True)
@@ -186,7 +186,7 @@ class GetData(object):
                 coll.update_one(query, {'$set': rec}, upsert = True)
         cur = coll.find({})
         count = cur.count()
-        print str(data.shape[0]) + ' records inserted in collection: [' + coll.name +'] - now there are ' + str(count) + ' records'
+        print(str(data.shape[0]) + ' records inserted in collection: [' + coll.name +'] - now there are ' + str(count) + ' records')
         
     def collect_game_data(self, player_shortcut, position):
         
@@ -203,10 +203,10 @@ class GetData(object):
 # =============================================================================
         
         url = self.url_raw + '&pos=' + position + '&player=' + player_shortcut
-        print 'searching for data for player ' + str(player_shortcut)
+        print('searching for data for player ' + str(player_shortcut))
         df_games = self.get_game_data(url)
         if df_games.empty:
-            print 'no data found for player ' + player_shortcut + ' on position ' + position
+            print('no data found for player ' + player_shortcut + ' on position ' + position)
             return
         df_games['shortcut'] = player_shortcut
         _src = dt.datetime.strftime(dt.datetime.now(), '%Y-%m-%d')
@@ -216,28 +216,30 @@ class GetData(object):
         
         cur = self.coll_games.find({})
         df = pd.DataFrame(list(cur))
-        df.to_csv('C:\Users\Matthias\Documents\GitHub\hockey_analyse\data_games.csv')
+        df.to_csv('home/matthias/PyCharmProjects/hockey_analyse/data_games.csv')
         
         
         
         
 
 if __name__ == '__main__':
-#    import string
-#    if len(letters) == 0:
-#        letters = list(string.ascii_lowercase)
+    import string
+    try:
+        len(letters)
+    except NameError:
+        letters = list(string.ascii_lowercase)
     data_instance = GetData()
-#    data_instance.get_player_data()
-#    #url = "https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max=99&player=greisth01&is_playoffs=N&group_set=single&series_game_min=1&series_game_max=7&team_game_min=1&team_game_max=84&player_game_min=1&player_game_max=9999&game_type%5B%5D=R&game_type%5B%5D=OT&game_type%5B%5D=SO&pos=G&game_month=0&order_by=goals_against_avg"
-#    #test.get_game_data(url=url)
-#    for letter in letters:
-#        print "=================================" + letter
-#        while True:
-#            try:
-#                data_instance.main(start_time = 1980, end_time = 2018, position = "G", letter = letter)
-#            except:
-#                continue
-#            break
+    data_instance.get_player_data()
+    url = "https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max=99&player=greisth01&is_playoffs=N&group_set=single&series_game_min=1&series_game_max=7&team_game_min=1&team_game_max=84&player_game_min=1&player_game_max=9999&game_type%5B%5D=R&game_type%5B%5D=OT&game_type%5B%5D=SO&pos=G&game_month=0&order_by=goals_against_avg"
+#    data_instance.get_game_data(url=url)
+    for letter in letters:
+        print("=================================" + letter)
+        while True:
+            try:
+                data_instance.main(start_time = 1980, end_time = 2018, position = "G", letter = letter)
+            except:
+                continue
+            break
     data_instance.write_to_csv()
     
         
