@@ -39,6 +39,8 @@ class GetData(object):
         print('starting to collect data for ' + str(players_count) + ' players')
         
         for pro, player in enumerate(players):
+            if player['shortcut'] == 'aebisda01':
+                print("stop")
             exists = self.coll_games.find_one({'shortcut': player['shortcut']})
             if exists:
                 print('Player ' + player['shortcut'] + ' already exists')
@@ -140,7 +142,7 @@ class GetData(object):
                     offset = True
                     print(str(pro) + ' records already found...continuing...')
                     break
-        df = pd.DataFrame(res, columns = header)
+        df = pd.DataFrame(res, columns = header) # hier ist der Fehler, len(header) = 24, len(row) = 23
         df.drop([''], axis = 1, inplace = True)
         return df
     
@@ -151,12 +153,12 @@ class GetData(object):
     
     def get_game_header(self, url):
         
-        soup = BeautifulSoup(urllib2.urlopen(url).read())
+        soup = BeautifulSoup(urlopen(url).read())
         soup.findAll('table')[0].thead.findAll('tr')
  
         for row in soup.findAll('table')[0].thead.findAll('tr'):
             header = []
-            for column_name in range(0, 24, 1):
+            for column_name in range(0, 23, 1):
                 if  row.find_all('th', {"class": " over_header center"}):
                     break
                 try:
@@ -216,7 +218,7 @@ class GetData(object):
         
         cur = self.coll_games.find({})
         df = pd.DataFrame(list(cur))
-        df.to_csv('home/matthias/PyCharmProjects/hockey_analyse/data_games.csv')
+        df.to_csv('/home/matthias/PyCharmProjects/hockey_analyse/data_games.csv')
         
         
         
@@ -228,6 +230,7 @@ if __name__ == '__main__':
         len(letters)
     except NameError:
         letters = list(string.ascii_lowercase)
+    letters = letters[26:]
     data_instance = GetData()
     data_instance.get_player_data()
     url = "https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max=99&player=greisth01&is_playoffs=N&group_set=single&series_game_min=1&series_game_max=7&team_game_min=1&team_game_max=84&player_game_min=1&player_game_max=9999&game_type%5B%5D=R&game_type%5B%5D=OT&game_type%5B%5D=SO&pos=G&game_month=0&order_by=goals_against_avg"
