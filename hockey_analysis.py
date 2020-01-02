@@ -11,11 +11,9 @@ import sys
 
 sys.path.append('/home/matthias/Documents/Python Scripts/hockey_analysis')
 import pandas as pd
-import numpy as np
 import requests
 import io
 from pymongo import MongoClient
-import sys
 from bs4 import BeautifulSoup
 import datetime as dt
 
@@ -34,7 +32,8 @@ class GetData(object):
         self.coll_players = self.client.hockey.players
         self.coll_games = self.client.hockey.games
         # self.coll_games.delete_many({})
-        self.url_raw = 'https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max=99&is_playoffs=N&group_set=single&player_game_min=1&player_game_max=9999'
+        self.url_raw = 'https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N' \
+                       '&age_min=0&age_max=99&is_playoffs=N&group_set=single&player_game_min=1&player_game_max=9999'
 
     def main(self, start_time, end_time, position, letter=None):
 
@@ -56,14 +55,7 @@ class GetData(object):
     def get_player_data(self):
 
         url = "https://d9kjk42l7bfqz.cloudfront.net/short/inc/players_search_list.csv"
-
-        headers = {
-            'Cache-Control': "no-cache",
-            'Postman-Token': "b1c405a9-acbd-48e0-9817-0b866f4cf77d"
-        }
-
-        response = requests.request("GET", url, headers=headers)
-        # print(response.text)
+        response = requests.request("GET", url)
         df_players = pd.read_csv(io.StringIO(response.text), sep=',',
                                  names=['shortcut', 'name', 'active_period', 'active_flag', "Unnamed: 1", "Unnamed: 2",
                                         "Unnamed: 3", "Unnamed: 4", "games_played", "Unnamed: 6"],
@@ -157,7 +149,8 @@ class GetData(object):
 
     # offset= 300
     # =============================================================================
-    #     https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max=99&is_playoffs=N&group_set=single&player_game_min=1&player_game_max=9999&pos=G&player=bironma01
+    #     https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max
+    #     =99&is_playoffs=N&group_set=single&player_game_min=1&player_game_max=9999&pos=G&player=bironma01
     # =============================================================================
 
     def get_game_header(self, url):
@@ -229,42 +222,68 @@ class GetData(object):
         df.to_csv('/home/matthias/PyCharmProjects/hockey_analyse/data_games.csv')
 
     def transfer_mdb_psql(self, tables, password):
+        """
+        "transfers data from Mongo-DB to postgreSQL
+        :param tables: table which to be to transfered
+        :param password: password to postgreSQL
+        :return:
+        """
 
         for table in tables:
-            if table == "players":
-                cur = self.coll_players.find()
-                df = pd.DataFrame(cur)
-                data_seq = [l for l in df.to_dict('rec')]
-                try:
-                    connector = psycopg2.connect(
-                        "dbname='hockey' user='postgres' host='127.0.0.1' password = %(password)s" % {
-                            "password": password})
-                    cur = connector.cursor()
-                    cur.execute('truncate table %(table)s' % {"table": table})
-                    cur.executemany(
-                        """INSERT INTO players(active_flag,first_name, last_name, shortcut, _src, end_active, begin_active) VALUES (%(active_flag)s, %(first_name)s, %(last_name)s, %(shortcut)s, %(_src)s, %(end_active)s, %(begin_active)s)""",
-                        data_seq)
-                    connector.commit()
+            try:
+                connector = psycopg2.connect(
+                    "dbname='hockey' user='postgres' host='127.0.0.1' password = %(password)s" % {
+                        "password": password})
+                if table == "players":
+                    cur = self.coll_players.find()
+                    df = pd.DataFrame(cur)
+                    data_seq = [l for l in df.to_dict('rec')]
+                    with connector.cursor() as cur:  # Context-Manager commited bzw. macht rollback im Falle eines
+                        # Errrors
+                        cur.execute('truncate table %(table)s' % {"table": table})
+                        cur.executemany(
+                            """INSERT INTO players(active_flag,first_name, last_name, shortcut, _src, end_active, 
+                            begin_active) VALUES (%(active_flag)s, %(first_name)s, %(last_name)s, %(shortcut)s, 
+                            %(_src)s, %(end_active)s, %(begin_active)s)""",
+                            data_seq)
+                elif table == "games":
+                    cur = self.coll_games.find()
+                    df = pd.DataFrame(cur)
+                    data_seq = [l for l in df.to_dict('rec')]
+                    with connector.cursor() as cur:  # Context-Manager commited bzw. macht rollback im Falle eines
+                        # Errrors
+                        cur.execute('truncate table %(table)s' % {"table": table})
+                        cur.executemany(
+                            """INSERT INTO players(Date,shortcut, A, Age, EV GA, G, GA, GAA, Opp, PIM, 
+                            PP GA, PTS, Pos, Rk, SA, SH GA, SO, SV, SV%, TOI, Tm, _src) VALUES (%(Date)s, 
+                            %(shortcut)s, %(A)s, %(Age)s, %(EV GA)s, %(G)s, %(GA)s, %(GAA)s, 
+                            %(Opp)s, %(PIM)s, %(PP GA)s, %(Pos)s, %(Rk)s, %(SA)s, %(SH GA)s, %(SO)s, %(SV)s, %(SV%)s, 
+                            %(TOI)s, %(Tm)s, %(_src)s)""",
+                            data_seq)
+            except Exception as e:
+                print(e)
+                del df
+            finally:
+                if connector is not None:
                     connector.close()
-                except:
-                    # TODO rollback
-                    del df
-                    pass
 
                 # self.coll_players = self.client.hockey.players
                 # self.coll_games = self.client.hockey.games
 
 
 if __name__ == '__main__':
-    get_data = GetData()
-    get_data.transfer_mdb_psql(["players"], password='')
+    # get_data = GetData()
+    # get_data.transfer_mdb_psql(["players"], password='')
 
     import string
 
     letters = list(string.ascii_lowercase)
     data_instance = GetData()
     data_instance.get_player_data()
-    url = "https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max=99&player=greisth01&is_playoffs=N&group_set=single&series_game_min=1&series_game_max=7&team_game_min=1&team_game_max=84&player_game_min=1&player_game_max=9999&game_type%5B%5D=R&game_type%5B%5D=OT&game_type%5B%5D=SO&pos=G&game_month=0&order_by=goals_against_avg"
+    url = "https://www.hockey-reference.com/play-index/pgl_finder.cgi?request=1&match=game&rookie=N&age_min=0&age_max" \
+          "=99&player=greisth01&is_playoffs=N&group_set=single&series_game_min=1&series_game_max=7&team_game_min=1" \
+          "&team_game_max=84&player_game_min=1&player_game_max=9999&game_type%5B%5D=R&game_type%5B%5D=OT&game_type%5B" \
+          "%5D=SO&pos=G&game_month=0&order_by=goals_against_avg"
     data_instance.get_game_data(url_raw=url)
     for letter in letters:
         print("=================================" + letter)
