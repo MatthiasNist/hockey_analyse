@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Mon Dec 25 15:56:26 2017
 
@@ -8,6 +7,7 @@ Created on Mon Dec 25 15:56:26 2017
 # test#####
 
 import sys
+import traceback
 
 sys.path.append('/home/matthias/Documents/Python Scripts/hockey_analysis')
 import pandas as pd
@@ -20,6 +20,7 @@ import datetime as dt
 import re
 from urllib import urlopen
 import psycopg2
+import numpy as np
 
 
 # import urllib2
@@ -249,19 +250,26 @@ class GetData(object):
                 elif table == "games":
                     cur = self.coll_games.find()
                     df = pd.DataFrame(cur)
+                    df.rename(columns={"SV%": "SV_perc"}, inplace=True)
+                    df['SV_perc'] = df['SV_perc'].apply(lambda x: np.nan if x == "" else x)
+                    df['EV GA'] = df['EV GA'].apply(lambda x: np.nan if x == "" else np.int64(x))
+                    df['SH GA'] = df['SH GA'].apply(lambda x: np.nan if x == "" else np.int64(x))
                     data_seq = [l for l in df.to_dict('rec')]
                     with connector.cursor() as cur:  # Context-Manager commited bzw. macht rollback im Falle eines
                         # Errrors
                         cur.execute('truncate table %(table)s' % {"table": table})
                         cur.executemany(
-                            """INSERT INTO players(Date,shortcut, A, Age, EV GA, G, GA, GAA, Opp, PIM, 
-                            PP GA, PTS, Pos, Rk, SA, SH GA, SO, SV, SV%, TOI, Tm, _src) VALUES (%(Date)s, 
+                            """INSERT INTO games(date, shortcut, a, age, ev_ga, g, ga, gaa, opp, pim, pp_ga, 
+                             pts, pos, rk, sa, sh_ga, so, sv, sv_perc, toi, tm, _src) VALUES (%(Date)s, 
                             %(shortcut)s, %(A)s, %(Age)s, %(EV GA)s, %(G)s, %(GA)s, %(GAA)s, 
-                            %(Opp)s, %(PIM)s, %(PP GA)s, %(Pos)s, %(Rk)s, %(SA)s, %(SH GA)s, %(SO)s, %(SV)s, %(SV%)s, 
+                            %(Opp)s, %(PIM)s, %(PP GA)s, %(PTS)s, %(Pos)s, %(Rk)s, %(SA)s, %(SH GA)s, %(SO)s, %(SV)s, 
+                            %(SV_perc)s,
                             %(TOI)s, %(Tm)s, %(_src)s)""",
                             data_seq)
-            except Exception as e:
-                print(e)
+                        connector.commit()
+                        connector.close()
+            except:
+                print(traceback.format_exc())
                 del df
             finally:
                 if connector is not None:
@@ -272,8 +280,8 @@ class GetData(object):
 
 
 if __name__ == '__main__':
-    # get_data = GetData()
-    # get_data.transfer_mdb_psql(["players"], password='')
+    get_data = GetData()
+    get_data.transfer_mdb_psql(["games"], password='')
 
     import string
 
@@ -294,3 +302,4 @@ if __name__ == '__main__':
                 continue
             break
     data_instance.write_to_csv()
+
