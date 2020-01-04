@@ -222,19 +222,29 @@ class GetData(object):
         df = pd.DataFrame(list(cur))
         df.to_csv('/home/matthias/PyCharmProjects/hockey_analyse/data_games.csv')
 
-    def transfer_mdb_psql(self, tables, password):
+    def transfer_mdb_azure(self, tables, password):
         """
-        "transfers data from Mongo-DB to postgreSQL
+        "transfers data from Mongo-DB to AZURE postgreSQL
         :param tables: table which to be to transfered
         :param password: password to postgreSQL
         :return:
         """
 
         for table in tables:
+
+            dbname = 'hockey'
+            user = 'matthias@hockey-analysis'
+            host = 'hockey-analysis.postgres.database.azure.com'
+            port = '5432'
+            sslmode = 'require'
+
+            # psql "host=hockey-analysis.postgres.database.azure.com user=matthias@hockey-analysis dbname=postgres sslmode=require"
+            # \c hockey
+
             try:
                 connector = psycopg2.connect(
-                    "dbname='hockey' user='postgres' host='127.0.0.1' password = %(password)s" % {
-                        "password": password})
+                    "dbname=%(dbname)s  user=%(user)s host=%(host)s port = %(port)s password = %(password)s sslmode = %(sslmode)s" % {
+                        "dbname": dbname, "user": user, "host": host, "password": password, "port": port, "sslmode": sslmode})
                 if table == "players":
                     cur = self.coll_players.find()
                     df = pd.DataFrame(cur)
@@ -247,6 +257,8 @@ class GetData(object):
                             begin_active) VALUES (%(active_flag)s, %(first_name)s, %(last_name)s, %(shortcut)s, 
                             %(_src)s, %(end_active)s, %(begin_active)s)""",
                             data_seq)
+                        connector.commit()
+                        connector.close()
                 elif table == "games":
                     cur = self.coll_games.find()
                     df = pd.DataFrame(cur)
@@ -281,7 +293,7 @@ class GetData(object):
 
 if __name__ == '__main__':
     get_data = GetData()
-    get_data.transfer_mdb_psql(["games"], password='')
+    get_data.transfer_mdb_azure(["games"], password='')
 
     import string
 
@@ -302,4 +314,3 @@ if __name__ == '__main__':
                 continue
             break
     data_instance.write_to_csv()
-

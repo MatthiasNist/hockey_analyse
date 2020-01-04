@@ -1,0 +1,41 @@
+CREATE DATABASE hockey;
+
+CREATE TABLE players (
+    shortcut VARCHAR(32) PRIMARY KEY,
+    first_name VARCHAR(32),
+    last_name VARCHAR(32),
+    active_flag BOOLEAN,
+    _src VARCHAR(32),
+    begin_active INTEGER,
+    end_active INTEGER
+);
+
+
+CREATE TABLE games (
+    date VARCHAR(32),
+    shortcut VARCHAR(32) REFERENCES players (shortcut),
+    a VARCHAR(32),
+    ga INTEGER,
+    gaa DECIMAL,
+    opp VARCHAR(32),
+    pim INTEGER,
+    pts INTEGER,
+    rk INTEGER,
+    sa INTEGER,
+    so INTEGER,
+    sv INTEGER,
+    sv_perc DECIMAL,
+    toi VARCHAR(32),
+    tm VARCHAR(32),
+    _src VARCHAR(32),
+    age VARCHAR(32),
+    g VARCHAR(32),
+    ev_ga VARCHAR(32),
+    pos VARCHAR(32),
+    sh_ga VARCHAR(32),
+    pp_ga VARCHAR(32),
+    PRIMARY KEY(date, shortcut)
+);
+
+
+
