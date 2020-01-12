@@ -292,8 +292,8 @@ class GetData(object):
 
 
 if __name__ == '__main__':
-    get_data = GetData()
-    get_data.transfer_mdb_azure(["games"], password='')
+    # get_data = GetData()
+    # get_data.transfer_mdb_azure(["games"], password='')
 
     import string
 
