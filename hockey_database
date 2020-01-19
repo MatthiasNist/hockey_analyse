@@ -1,6 +1,6 @@
 CREATE DATABASE hockey;
 
-CREATE TABLE players (
+CREATE TABLE test (
     shortcut VARCHAR(32) PRIMARY KEY,
     first_name VARCHAR(32),
     last_name VARCHAR(32),
